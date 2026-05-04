@@ -2,6 +2,7 @@ import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
+import ast
 
 st.set_page_config(
     page_title="Intelligent Book Recommendation System",
@@ -15,6 +16,7 @@ st.set_page_config(
 @st.cache_resource
 def load_data():
     data = pd.read_csv("../datasets/cleaned_audible_catalog.csv")
+    data['Genre_List'] = data['Genre_List'].apply(ast.literal_eval)
     return data
 
 df = load_data()
@@ -34,26 +36,52 @@ tab1, tab2 = st.tabs([
     "Genre-Based Recommendations"
 ])
 
-book_choice = st.selectbox(
-    "Choose a book: ",
-    df['Book_Name'].tolist(),
-    index=None
-)
+with tab1:
 
-if st.button("Get Recommendations"):
-    if book_choice == None:
-        st.warning("Please select a book to get recommendations.")
-    else:
-        matches = df[df['Book_Name'] == book_choice]
-        if len(matches) > 0:
-            idx = matches.index[0]
-            sim_scores = list(enumerate(cosine_sim[idx]))
-            sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-            book_indices = [i[0] for i in sim_scores[1:6]]
-            st.write(f"### Book Recommendations similar to ***{book_choice}***")
-            st.dataframe(
-                df.iloc[book_indices][['Book_Name','Author', 'Rating', 'Main_Genre']],
-                hide_index=True
-            )
+    book_choice = st.selectbox(
+        "Choose a book: ",
+        df['Book_Name'].tolist(),
+        index=None
+    )
+
+    if st.button("Get Recommendations"):
+        if book_choice == None:
+            st.warning("Please select a book to get recommendations.")
         else:
-            st.warning("Book not found ")
+            matches = df[df['Book_Name'] == book_choice]
+            if len(matches) > 0:
+                idx = matches.index[0]
+                sim_scores = list(enumerate(cosine_sim[idx]))
+                sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+                book_indices = [i[0] for i in sim_scores[1:6]]
+                st.write(f"### Book Recommendations similar to ***{book_choice}***")
+                st.dataframe(
+                    df.iloc[book_indices][['Book_Name','Author', 'Rating', 'Main_Genre']],
+                    hide_index=True
+                )
+            else:
+                st.warning("Book not found ")
+
+with tab2:
+    all_genres = sorted({genre for sublist in df['Genre_List'] for genre in sublist})
+    selected_genre = st.selectbox(
+        "Select a genre to browse books: ",
+        all_genres,
+        index=None
+    )
+
+    if st.button("Get Recommendations "):
+            if selected_genre != 'None':
+                mask = df['Genre_List'].apply(lambda x: selected_genre in x)
+                genre_recommendations = df[mask].sort_values(by='Rating', ascending=False)
+                
+                if not genre_recommendations.empty:
+                    st.write(f"##### Books categorized under ***{selected_genre}***:")
+                    st.dataframe(
+                        genre_recommendations[['Book_Name', 'Author', 'Rating', 'Main_Genre', 'Genre_List']], 
+                        hide_index=True
+                    )
+                else:
+                    st.info("No books found for this genre.")
+            else:
+                st.warning("Please select a genre")
