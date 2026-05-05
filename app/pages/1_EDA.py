@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from data.data import load_data
+from sidebar.filters import filters, sidebar_filters
 import plotly.express as px
 
 st.set_page_config(
@@ -7,14 +9,21 @@ st.set_page_config(
 )
 
 #--------------------------------------------------------------
+# Load Sidebar Filters
+#--------------------------------------------------------------
+with st.sidebar:
+    sidebar_filters()
+
+#--------------------------------------------------------------
 # Dataset Loading
 #--------------------------------------------------------------
-@st.cache_resource
-def load_data():
-    data = pd.read_csv("../datasets/cleaned_audible_catalog.csv")
-    return data
 
-df = load_data()
+
+df = load_data(filters)
+
+if df is None or df.empty:
+    st.warning("No data available for the selected filters.")
+    st.stop()
 
 #--------------------------------------------------------------
 # Chart Functions
@@ -40,7 +49,7 @@ def top_genres(df):
         .head(10)
     )
 
-    st.write("### Top 10 Genres")
+    st.write("### Top Genres")
     fig = px.bar(
         popular_genres,
         x="Main_Genre",
@@ -56,7 +65,6 @@ def popular_books(df):
     top_books = (
         df_extended
         .sort_values(by='Popularity', ascending=False)
-        .head(10)
         [['Book_Name', 'Author', 'Rating', 'Number_of_Reviews']]
     )
     return top_books
