@@ -88,5 +88,3 @@ with tab2:
                     st.info("No books found for this genre.")
             else:
                 st.warning("Please select a genre")
-
-
